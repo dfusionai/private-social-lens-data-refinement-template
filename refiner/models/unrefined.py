@@ -6,9 +6,6 @@ class Profile(BaseModel):
     name: str
     locale: str
 
-class Storage(BaseModel):
-    percentUsed: float
-
 class Metadata(BaseModel):
     source: str
     collectionDate: str
@@ -60,6 +57,5 @@ class User(BaseModel):
     email: str
     timestamp: int
     profile: Profile
-    storage: Optional[Storage] = None
     metadata: Optional[Metadata] = None
     telegramData: Optional[TelegramData] = None

@@ -1,7 +1,7 @@
 from typing import Dict, Any, List
 from refiner.models.refined import Base
 from refiner.transformer.base_transformer import DataTransformer
-from refiner.models.refined import UserRefined, StorageMetric, AuthSource
+from refiner.models.refined import UserRefined, AuthSource
 from refiner.models.refined import TelegramAccount, TelegramChat, TelegramMessage, TelegramMedia, TelegramForward
 from refiner.models.unrefined import User
 from refiner.utils.date import parse_timestamp
@@ -36,14 +36,6 @@ class UserTransformer(DataTransformer):
         )
         
         models = [user]
-        
-        if unrefined_user.storage:
-            storage_metric = StorageMetric(
-                user_id=unrefined_user.userId,
-                percent_used=unrefined_user.storage.percentUsed,
-                recorded_at=created_at
-            )
-            models.append(storage_metric)
         
         if unrefined_user.metadata:
             collection_date = parse_timestamp(unrefined_user.metadata.collectionDate)

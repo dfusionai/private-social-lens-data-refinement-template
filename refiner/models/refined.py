@@ -16,19 +16,8 @@ class UserRefined(Base):
     locale = Column(String, nullable=False)
     created_at = Column(DateTime, nullable=False)
     
-    storage_metrics = relationship("StorageMetric", back_populates="user")
     auth_sources = relationship("AuthSource", back_populates="user")
     telegram_account = relationship("TelegramAccount", back_populates="user", uselist=False)
-
-class StorageMetric(Base):
-    __tablename__ = 'storage_metrics'
-    
-    metric_id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(String, ForeignKey('users.user_id'), nullable=False)
-    percent_used = Column(Float, nullable=False)
-    recorded_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    
-    user = relationship("UserRefined", back_populates="storage_metrics")
 
 class AuthSource(Base):
     __tablename__ = 'auth_sources'

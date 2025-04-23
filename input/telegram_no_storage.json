@@ -1,0 +1,105 @@
+{
+  "userId": "telegram123456789",
+  "email": "user@example.com",
+  "timestamp": 1689851234,
+  "profile": {
+    "name": "John Doe",
+    "locale": "en-US"
+  },
+  "metadata": {
+    "source": "telegram",
+    "collectionDate": "2023-07-20T13:45:22Z",
+    "dataType": "messages"
+  },
+  "telegramData": {
+    "username": "johndoe",
+    "phoneNumber": "+1234567890",
+    "isBot": false,
+    "isPremium": true,
+    "joinDate": 1620567890,
+    "messages": [
+      {
+        "messageId": 1001,
+        "chatId": 5001,
+        "chatType": "private",
+        "chatTitle": "Alice Smith",
+        "timestamp": 1689843210,
+        "text": "Hi, how are you doing?",
+        "isOutgoing": true,
+        "replyToMessageId": null,
+        "forwardInfo": null,
+        "hasMedia": false
+      },
+      {
+        "messageId": 1002,
+        "chatId": 5001,
+        "chatType": "private",
+        "chatTitle": "Alice Smith",
+        "timestamp": 1689843305,
+        "text": "I'm good, thanks! What about you?",
+        "isOutgoing": false,
+        "replyToMessageId": 1001,
+        "forwardInfo": null,
+        "hasMedia": false
+      },
+      {
+        "messageId": 2001,
+        "chatId": 5002,
+        "chatType": "group",
+        "chatTitle": "Project Team",
+        "timestamp": 1689844210,
+        "text": "Hello everyone, I've just pushed the latest update.",
+        "isOutgoing": true,
+        "replyToMessageId": null,
+        "forwardInfo": null,
+        "hasMedia": false
+      },
+      {
+        "messageId": 3001,
+        "chatId": 5003,
+        "chatType": "channel",
+        "chatTitle": "Tech News",
+        "timestamp": 1689845100,
+        "text": "Breaking: New AI model released today!",
+        "isOutgoing": false,
+        "replyToMessageId": null,
+        "forwardInfo": {
+          "originalSender": "TechNewsDaily",
+          "originalDate": 1689844800
+        },
+        "hasMedia": true,
+        "media": {
+          "type": "photo",
+          "caption": "AI model diagram",
+          "fileSize": 256789
+        }
+      }
+    ],
+    "chats": [
+      {
+        "chatId": 5001,
+        "type": "private",
+        "title": "Alice Smith",
+        "username": "alice_smith",
+        "messageCount": 143,
+        "lastActivity": 1689843305
+      },
+      {
+        "chatId": 5002,
+        "type": "group",
+        "title": "Project Team",
+        "memberCount": 8,
+        "messageCount": 1256,
+        "lastActivity": 1689844500
+      },
+      {
+        "chatId": 5003,
+        "type": "channel",
+        "title": "Tech News",
+        "subscriberCount": 15420,
+        "messageCount": 865,
+        "lastActivity": 1689845100
+      }
+    ]
+  }
+} 
