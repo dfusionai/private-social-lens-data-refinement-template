@@ -6,6 +6,7 @@ from refiner.models.refined import TelegramAccount, TelegramChat, TelegramMessag
 from refiner.models.unrefined import User
 from refiner.utils.date import parse_timestamp
 from refiner.utils.pii import mask_email, mask_phone
+from sqlalchemy.orm import Session
 
 class UserTransformer(DataTransformer):
     """
@@ -62,11 +63,14 @@ class UserTransformer(DataTransformer):
             )
             models.append(account)
             
+            # Dictionary to store chats by ID for quick lookup
+            chat_lookup = {}
+            
             # Create Telegram chats
             for chat_data in telegram_data.chats:
                 chat = TelegramChat(
                     chat_id=chat_data.chatId,
-                    account_id=account.account_id,  # This will be populated after DB insertion
+                    # Don't set account_id yet - let SQL handle it during the insert
                     type=chat_data.type,
                     title=chat_data.title,
                     username=chat_data.username,
@@ -75,6 +79,8 @@ class UserTransformer(DataTransformer):
                     message_count=chat_data.messageCount,
                     last_activity=parse_timestamp(chat_data.lastActivity)
                 )
+                # Store chat in lookup dictionary and add to models
+                chat_lookup[chat.chat_id] = chat
                 models.append(chat)
             
             # Create Telegram messages
@@ -82,7 +88,7 @@ class UserTransformer(DataTransformer):
                 msg = TelegramMessage(
                     message_id=msg_data.messageId,
                     chat_id=msg_data.chatId,
-                    account_id=account.account_id,  # This will be populated after DB insertion
+                    # Don't set account_id yet - let SQL handle it during the insert
                     timestamp=parse_timestamp(msg_data.timestamp),
                     text=msg_data.text,
                     is_outgoing=msg_data.isOutgoing,
@@ -111,3 +117,58 @@ class UserTransformer(DataTransformer):
                     models.append(forward)
         
         return models
+    
+    def process(self, data: Dict[str, Any]) -> None:
+        """
+        Override process to handle telegram relationships.
+        """
+        session = self.Session()
+        try:
+            # Transform data into model instances
+            models = self.transform(data)
+            
+            # Add all models to session
+            for model in models:
+                session.add(model)
+                
+            # Flush session to get IDs assigned
+            session.flush()
+            
+            # Update telegram relationships if necessary
+            if 'telegramData' in data:
+                user_id = data['userId']
+                
+                # Get the account
+                account = session.query(TelegramAccount).filter_by(user_id=user_id).first()
+                
+                if account:
+                    # Get chat IDs from the data
+                    chat_ids = []
+                    if 'chats' in data['telegramData']:
+                        chat_ids = [chat['chatId'] for chat in data['telegramData']['chats']]
+                    
+                    # Update all chats to point to this account
+                    if chat_ids:
+                        session.query(TelegramChat).filter(
+                            TelegramChat.chat_id.in_(chat_ids)
+                        ).update(
+                            {TelegramChat.account_id: account.account_id}, 
+                            synchronize_session=False
+                        )
+                    
+                    # Update all messages related to these chats
+                    if chat_ids:
+                        session.query(TelegramMessage).filter(
+                            TelegramMessage.chat_id.in_(chat_ids)
+                        ).update(
+                            {TelegramMessage.account_id: account.account_id},
+                            synchronize_session=False
+                        )
+            
+            # Commit the session
+            session.commit()
+        except Exception as e:
+            session.rollback()
+            raise e
+        finally:
+            session.close()

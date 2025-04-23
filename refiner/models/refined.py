@@ -17,7 +17,7 @@ class UserRefined(Base):
     created_at = Column(DateTime, nullable=False)
     
     auth_sources = relationship("AuthSource", back_populates="user")
-    telegram_account = relationship("TelegramAccount", back_populates="user", uselist=False)
+    telegram_account = relationship("TelegramAccount", back_populates="user", uselist=False, cascade="all, delete-orphan")
 
 class AuthSource(Base):
     __tablename__ = 'auth_sources'
@@ -42,14 +42,14 @@ class TelegramAccount(Base):
     join_date = Column(DateTime, nullable=False)
     
     user = relationship("UserRefined", back_populates="telegram_account")
-    chats = relationship("TelegramChat", back_populates="account")
-    messages = relationship("TelegramMessage", back_populates="account")
+    chats = relationship("TelegramChat", back_populates="account", cascade="all, delete-orphan")
+    messages = relationship("TelegramMessage", back_populates="account", cascade="all, delete-orphan")
 
 class TelegramChat(Base):
     __tablename__ = 'telegram_chats'
     
     chat_id = Column(Integer, primary_key=True)
-    account_id = Column(Integer, ForeignKey('telegram_accounts.account_id'), nullable=False)
+    account_id = Column(Integer, ForeignKey('telegram_accounts.account_id'), nullable=True)  # Make nullable temporarily
     type = Column(String, nullable=False)  # private, group, channel
     title = Column(String, nullable=False)
     username = Column(String, nullable=True)
@@ -59,14 +59,14 @@ class TelegramChat(Base):
     last_activity = Column(DateTime, nullable=False)
     
     account = relationship("TelegramAccount", back_populates="chats")
-    messages = relationship("TelegramMessage", back_populates="chat")
+    messages = relationship("TelegramMessage", back_populates="chat", cascade="all, delete-orphan")
 
 class TelegramMessage(Base):
     __tablename__ = 'telegram_messages'
     
     message_id = Column(Integer, primary_key=True)
     chat_id = Column(Integer, ForeignKey('telegram_chats.chat_id'), nullable=False)
-    account_id = Column(Integer, ForeignKey('telegram_accounts.account_id'), nullable=False)
+    account_id = Column(Integer, ForeignKey('telegram_accounts.account_id'), nullable=True)  # Make nullable temporarily
     timestamp = Column(DateTime, nullable=False)
     text = Column(Text, nullable=True)
     is_outgoing = Column(Boolean, nullable=False)
@@ -75,8 +75,8 @@ class TelegramMessage(Base):
     
     chat = relationship("TelegramChat", back_populates="messages")
     account = relationship("TelegramAccount", back_populates="messages")
-    media = relationship("TelegramMedia", back_populates="message", uselist=False)
-    forward_info = relationship("TelegramForward", back_populates="message", uselist=False)
+    media = relationship("TelegramMedia", back_populates="message", uselist=False, cascade="all, delete-orphan")
+    forward_info = relationship("TelegramForward", back_populates="message", uselist=False, cascade="all, delete-orphan")
 
 class TelegramMedia(Base):
     __tablename__ = 'telegram_media'
