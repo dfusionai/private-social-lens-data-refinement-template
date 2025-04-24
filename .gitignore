@@ -9,3 +9,10 @@ __pycache__/
 
 .idea/
 .DS_Store
+
+extracted_images/
+extracted_images_with_content/
+output/
+refiner/output/
+refiner/output_files/
+refiner/output_files_files/

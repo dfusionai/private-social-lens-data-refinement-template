@@ -5,6 +5,7 @@ import os
 from refiner.models.offchain_schema import OffChainSchema
 from refiner.models.output import Output
 from refiner.transformer.user_transformer import UserTransformer
+from refiner.transformer.webapp_transformer import WebappTransformer
 from refiner.config import settings
 from refiner.utils.encrypt import encrypt_file
 from refiner.utils.ipfs import upload_file_to_ipfs, upload_json_to_ipfs
@@ -24,9 +25,17 @@ class Refiner:
             if os.path.splitext(input_file)[1].lower() == '.json':
                 with open(input_file, 'r') as f:
                     input_data = json.load(f)
-
-                    # Transform account data
-                    transformer = UserTransformer(self.db_path)
+                    
+                    # Determine which transformer to use based on file content
+                    transformer = None
+                    if input_filename == 'webapp-fileDto.json' or ('revision' in input_data and 'chats' in input_data):
+                        logging.info(f"Using WebappTransformer for {input_filename}")
+                        transformer = WebappTransformer(self.db_path)
+                    else:
+                        logging.info(f"Using UserTransformer for {input_filename}")
+                        transformer = UserTransformer(self.db_path)
+                    
+                    # Process the data
                     transformer.process(input_data)
                     logging.info(f"Transformed {input_filename}")
                     

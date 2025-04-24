@@ -117,50 +117,105 @@ class FwdFrom(BaseModel):
     className: str
 
 
-class MessageContent(BaseModel):
-    flags: int
-    out: bool
-    mentioned: bool
-    mediaUnread: bool
-    reactionsArePossible: Optional[bool] = None
-    silent: bool
-    post: bool
-    legacy: bool
-    id: int
-    fromId: Optional[FromId] = None
-    fromBoostsApplied: Optional[Any] = None
-    peerId: PeerId
-    savedPeerId: Optional[Any] = None
-    fwdFrom: Optional[FwdFrom] = None
-    viaBotId: Optional[Any] = None
-    viaBusinessBotId: Optional[Any] = None
-    replyTo: Optional[ReplyTo] = None
-    date: int
-    message: Optional[str] = None
-    media: Optional[Media] = None
-    replyMarkup: Optional[Any] = None
-    entities: Optional[Any] = None
-    views: Optional[int] = None
-    forwards: Optional[int] = None
-    replies: Optional[Any] = None
-    editDate: Optional[int] = None
-    postAuthor: Optional[str] = None
-    groupedId: Optional[Any] = None
-    reactions: Optional[Any] = None
-    restrictionReason: Optional[Any] = None
-    ttlPeriod: Optional[int] = None
-    action: Optional[Action] = None
-    className: str = Field(..., description="Type of message: Message or MessageService")
+# Updated models for webapp-fileDto.json
 
+class File(BaseModel):
+    """Model for file data"""
+    type: str = Field(..., alias="@type")
+    id: int
+    size: int
+    expected_size: int
+
+class PhotoSize(BaseModel):
+    """Model for photo size information"""
+    type: str = Field(..., alias="@type")
+    type_attr: str = Field(..., alias="type")
+    photo: Optional[File] = None
+    width: Optional[int] = None
+    height: Optional[int] = None
+    progressive_sizes: Optional[List[int]] = None
+
+class Minithumbnail(BaseModel):
+    """Model for minithumbnail"""
+    type: str = Field(..., alias="@type")
+    width: int
+    height: int
+    data: str
+
+class Photo(BaseModel):
+    """Model for photo content"""
+    type: str = Field(..., alias="@type")
+    has_stickers: bool
+    minithumbnail: Optional[Minithumbnail] = None
+    sizes: List[PhotoSize]
+
+class TextEntity(BaseModel):
+    """Model for text entity"""
+    type: str = Field(..., alias="@type")
+    offset: int
+    length: int
+    type_attr: Optional[Dict[str, Any]] = None
+
+class FormattedText(BaseModel):
+    """Model for formatted text content"""
+    type: str = Field(..., alias="@type")
+    text: str
+    entities: Optional[List[TextEntity]] = []
+
+class SenderUser(BaseModel):
+    """Model for message sender user identification"""
+    type: str = Field(..., alias="@type")
+    user_id: int
+
+class SenderChat(BaseModel):
+    """Model for message sender chat identification"""
+    type: str = Field(..., alias="@type")
+    chat_id: int
+
+class MessageContent(BaseModel):
+    """Model for message content"""
+    type: str = Field(..., alias="@type")
+    photo: Optional[Photo] = None
+    caption: Optional[FormattedText] = None
+    text: Optional[Union[str, FormattedText]] = None
+    show_caption_above_media: Optional[bool] = None
+    has_spoiler: Optional[bool] = None
+    is_secret: Optional[bool] = None
+
+class InteractionInfo(BaseModel):
+    """Model for message interaction information"""
+    type: str = Field(..., alias="@type")
+    view_count: int
+    forward_count: int
+
+class MessageData(BaseModel):
+    """Model for message data"""
+    type: str = Field(..., alias="@type")
+    id: int
+    sender_id: Union[SenderUser, SenderChat]
+    chat_id: int
+    date: int
+    edit_date: Optional[int] = None
+    is_outgoing: bool
+    is_pinned: bool
+    is_from_offline: Optional[bool] = None
+    can_be_saved: Optional[bool] = None
+    has_timestamped_media: Optional[bool] = None
+    is_channel_post: Optional[bool] = None
+    is_topic_message: Optional[bool] = None
+    contains_unread_mention: Optional[bool] = None
+    interaction_info: Optional[InteractionInfo] = None
+    content: MessageContent
 
 class ChatData(BaseModel):
+    """Model for chat data"""
     chat_id: int
-    contents: List[MessageContent]
-
+    contents: List[MessageData]
 
 class MinerFileDto(BaseModel):
+    """Root model for webapp-fileDto.json"""
     revision: str
     source: str
-    user: str
+    user: Union[int, str]
     submission_token: str
     chats: List[ChatData]
