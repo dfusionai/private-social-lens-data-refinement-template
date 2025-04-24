@@ -1,174 +1,125 @@
 from typing import Dict, Any, List
 from refiner.models.refined import Base
 from refiner.transformer.base_transformer import DataTransformer
-from refiner.models.refined import UserRefined, AuthSource
-from refiner.models.refined import TelegramAccount, TelegramChat, TelegramMessage, TelegramMedia, TelegramForward
-from refiner.models.unrefined import User
+from refiner.models.refined import Users, Submissions, SubmissionChats, ChatMessages
+from refiner.models.unrefined import MinerFileDto
 from refiner.utils.date import parse_timestamp
-from refiner.utils.pii import mask_email, mask_phone
+from refiner.utils.pii import mask_phone
 from sqlalchemy.orm import Session
+import uuid
+import logging
+from datetime import datetime
 
 class UserTransformer(DataTransformer):
     """
-    Transformer for user data as defined in the example.
+    Transformer for Telegram chat data from miner-fileDto.json format.
     """
     
     def transform(self, data: Dict[str, Any]) -> List[Base]:
         """
-        Transform raw user data into SQLAlchemy model instances.
+        Transform raw Telegram data into SQLAlchemy model instances.
         
         Args:
-            data: Dictionary containing user data
+            data: Dictionary containing Telegram data
             
         Returns:
             List of SQLAlchemy model instances
         """
         # Validate data with Pydantic
-        unrefined_user = User.model_validate(data)
-        created_at = parse_timestamp(unrefined_user.timestamp)
+        try:
+            miner_data = MinerFileDto.model_validate(data)
+        except Exception as e:
+            logging.error(f"Error validating miner data: {e}")
+            raise
         
-        # Create user instance
-        user = UserRefined(
-            user_id=unrefined_user.userId,
-            email=mask_email(unrefined_user.email),  # Apply any PII masking (optional)
-            name=unrefined_user.profile.name,
-            locale=unrefined_user.profile.locale,
-            created_at=created_at
+        models = []
+        
+        # Create user record
+        user_id = str(uuid.uuid4())
+        user = Users(
+            UserID=user_id,
+            Source="Telegram",
+            SourceUserId=miner_data.user,
+            Status="active",
+            DateTimeCreated=datetime.now()
         )
+        models.append(user)
         
-        models = [user]
+        # Create submission record
+        submission_id = str(uuid.uuid4())
+        submission = Submissions(
+            SubmissionID=submission_id,
+            UserID=user_id,
+            SubmissionDate=datetime.now(),
+            SubmissionReference=miner_data.submission_token
+        )
+        models.append(submission)
         
-        if unrefined_user.metadata:
-            collection_date = parse_timestamp(unrefined_user.metadata.collectionDate)
-            auth_source = AuthSource(
-                user_id=unrefined_user.userId,
-                source=unrefined_user.metadata.source,
-                collection_date=collection_date,
-                data_type=unrefined_user.metadata.dataType
+        # Process each chat
+        for chat_data in miner_data.chats:
+            # Calculate chat statistics
+            message_count = len(chat_data.contents)
+            
+            # Determine first and last message dates
+            message_dates = [datetime.fromtimestamp(msg.date) for msg in chat_data.contents if hasattr(msg, 'date')]
+            first_message_date = min(message_dates) if message_dates else datetime.now()
+            last_message_date = max(message_dates) if message_dates else datetime.now()
+            
+            # Count unique participants
+            participants = set()
+            for msg in chat_data.contents:
+                if hasattr(msg, 'fromId') and msg.fromId:
+                    participants.add(msg.fromId.userId)
+            
+            # Create SubmissionChat record
+            chat_id = str(uuid.uuid4())
+            chat = SubmissionChats(
+                SubmissionChatID=chat_id,
+                SubmissionID=submission_id,
+                SourceChatID=str(chat_data.chat_id),
+                FirstMessageDate=first_message_date,
+                LastMessageDate=last_message_date,
+                ParticipantCount=len(participants),
+                MessageCount=message_count
             )
-            models.append(auth_source)
-        
-        # Process Telegram data if available
-        if unrefined_user.telegramData:
-            telegram_data = unrefined_user.telegramData
+            models.append(chat)
             
-            # Create Telegram account
-            account = TelegramAccount(
-                user_id=unrefined_user.userId,
-                username=telegram_data.username,
-                phone_masked=mask_phone(telegram_data.phoneNumber),  # Apply PII masking
-                is_bot=telegram_data.isBot,
-                is_premium=telegram_data.isPremium,
-                join_date=parse_timestamp(telegram_data.joinDate)
-            )
-            models.append(account)
-            
-            # Dictionary to store chats by ID for quick lookup
-            chat_lookup = {}
-            
-            # Create Telegram chats
-            for chat_data in telegram_data.chats:
-                chat = TelegramChat(
-                    chat_id=chat_data.chatId,
-                    # Don't set account_id yet - let SQL handle it during the insert
-                    type=chat_data.type,
-                    title=chat_data.title,
-                    username=chat_data.username,
-                    member_count=chat_data.memberCount,
-                    subscriber_count=chat_data.subscriberCount,
-                    message_count=chat_data.messageCount,
-                    last_activity=parse_timestamp(chat_data.lastActivity)
-                )
-                # Store chat in lookup dictionary and add to models
-                chat_lookup[chat.chat_id] = chat
-                models.append(chat)
-            
-            # Create Telegram messages
-            for msg_data in telegram_data.messages:
-                msg = TelegramMessage(
-                    message_id=msg_data.messageId,
-                    chat_id=msg_data.chatId,
-                    # Don't set account_id yet - let SQL handle it during the insert
-                    timestamp=parse_timestamp(msg_data.timestamp),
-                    text=msg_data.text,
-                    is_outgoing=msg_data.isOutgoing,
-                    reply_to_message_id=msg_data.replyToMessageId,
-                    has_media=msg_data.hasMedia
-                )
-                models.append(msg)
+            # Process each message in the chat
+            for msg_content in chat_data.contents:
+                # Determine content type and actual content
+                content_type = "text"
+                content = None
                 
-                # Add media info if available
-                if msg_data.hasMedia and msg_data.media:
-                    media = TelegramMedia(
-                        message_id=msg.message_id,
-                        media_type=msg_data.media.type,
-                        caption=msg_data.media.caption,
-                        file_size=msg_data.media.fileSize
-                    )
-                    models.append(media)
+                if msg_content.className == "Message" and hasattr(msg_content, 'message') and msg_content.message:
+                    content_type = "text"
+                    content = msg_content.message
+                elif msg_content.className == "MessageService":
+                    content_type = "service"
+                    if hasattr(msg_content, 'action'):
+                        content = f"Service message: {msg_content.action.className}"
+                elif hasattr(msg_content, 'media') and msg_content.media:
+                    # Handle media content types
+                    content_type = "media"
+                    content = "Media content"  # Placeholder, actual media processing would go here
                 
-                # Add forward info if available
-                if msg_data.forwardInfo:
-                    forward = TelegramForward(
-                        message_id=msg.message_id,
-                        original_sender=msg_data.forwardInfo.originalSender,
-                        original_date=parse_timestamp(msg_data.forwardInfo.originalDate)
-                    )
-                    models.append(forward)
+                # Get sender ID
+                sender_id = None
+                if hasattr(msg_content, 'fromId') and msg_content.fromId:
+                    sender_id = msg_content.fromId.userId
+                else:
+                    sender_id = "unknown"
+                
+                # Create ChatMessage record
+                message = ChatMessages(
+                    MessageID=str(uuid.uuid4()),
+                    SubmissionChatID=chat_id,
+                    SourceMessageID=str(msg_content.id),
+                    SenderID=sender_id,
+                    MessageDate=datetime.fromtimestamp(msg_content.date),
+                    ContentType=content_type,
+                    Content=content,
+                    ContentData=None  # Media data would be processed here if needed
+                )
+                models.append(message)
         
         return models
-    
-    def process(self, data: Dict[str, Any]) -> None:
-        """
-        Override process to handle telegram relationships.
-        """
-        session = self.Session()
-        try:
-            # Transform data into model instances
-            models = self.transform(data)
-            
-            # Add all models to session
-            for model in models:
-                session.add(model)
-                
-            # Flush session to get IDs assigned
-            session.flush()
-            
-            # Update telegram relationships if necessary
-            if 'telegramData' in data:
-                user_id = data['userId']
-                
-                # Get the account
-                account = session.query(TelegramAccount).filter_by(user_id=user_id).first()
-                
-                if account:
-                    # Get chat IDs from the data
-                    chat_ids = []
-                    if 'chats' in data['telegramData']:
-                        chat_ids = [chat['chatId'] for chat in data['telegramData']['chats']]
-                    
-                    # Update all chats to point to this account
-                    if chat_ids:
-                        session.query(TelegramChat).filter(
-                            TelegramChat.chat_id.in_(chat_ids)
-                        ).update(
-                            {TelegramChat.account_id: account.account_id}, 
-                            synchronize_session=False
-                        )
-                    
-                    # Update all messages related to these chats
-                    if chat_ids:
-                        session.query(TelegramMessage).filter(
-                            TelegramMessage.chat_id.in_(chat_ids)
-                        ).update(
-                            {TelegramMessage.account_id: account.account_id},
-                            synchronize_session=False
-                        )
-            
-            # Commit the session
-            session.commit()
-        except Exception as e:
-            session.rollback()
-            raise e
-        finally:
-            session.close()

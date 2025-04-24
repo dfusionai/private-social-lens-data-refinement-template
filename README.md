@@ -13,6 +13,42 @@ This template provides a structure for building data refinement tasks that:
 5. Upload the encrypted data to IPFS
 6. Output the schema and IPFS URL to the `/output` directory
 
+## Database Schema
+
+The data refinement process transforms Telegram chat data into the following normalized database schema:
+
+### Users Table
+- **UserID**: guid (PK)
+- **Source**: string (Telegram/WhatsApp)
+- **SourceUserId**: string
+- **Status**: string (active/deleted)
+- **DateTimeCreated**: timestamp/int
+
+### Submissions Table
+- **SubmissionID**: guid (PK)
+- **UserID**: guid (FK)
+- **SubmissionDate**: timestamp/int
+- **SubmissionReference**: string (FileID)
+
+### SubmissionChats Table
+- **SubmissionChatID**: guid (PK)
+- **SubmissionID**: guid (FK)
+- **SourceChatID**: string
+- **FirstMessageDate**: timestamp/int
+- **LastMessageDate**: timestamp/int
+- **ParticipantCount**: int
+- **MessageCount**: int
+
+### ChatMessages Table
+- **MessageID**: guid (PK)
+- **SubmissionChatID**: guid (FK)
+- **SourceMessageID**: string
+- **SenderID**: string (AuthorId)
+- **MessageDate**: timestamp/int
+- **ContentType**: string (text/image/video/audio)
+- **Content**: string (text)
+- **ContentData**: ByteArray (media)
+
 ## Project Structure
 
 - `refiner/`: Contains the main refinement logic

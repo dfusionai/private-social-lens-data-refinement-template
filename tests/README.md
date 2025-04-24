@@ -19,58 +19,78 @@ This script validates that Telegram data has been properly refined by checking:
 - Media attachments
 - Forwarded message details
 
+### `validate_miner_data.py`
+
+This script validates that Telegram miner data has been properly refined by checking:
+
+- Database structure with the new schema (Users, Submissions, SubmissionChats, ChatMessages)
+- User record validation
+- Submission record validation
+- Chat metadata validation
+- Message content validation
+- Relationships between tables
+
 ## Usage
 
-Run the validation script from the project root directory:
+Run the validation scripts from the project root directory:
 
 ```bash
+# For traditional Telegram data format
 python tests/validate_telegram_data.py
+
+# For miner-fileDto format
+python tests/validate_miner_data.py
 ```
 
-The script will:
-1. Load the input data from `input/a_telegram_data.json`
+The scripts will:
+1. Load the input data from their respective input files
 2. Connect to the refined database at `output/db.libsql`
 3. Perform comprehensive validation checks
 4. Output the results with detailed error messages if any issues are found
 
-## Expected Output
+## Expected Output for `validate_miner_data.py`
 
 If all validation checks pass, you'll see:
 
 ```
-🔍 Starting Telegram data validation from input/a_telegram_data.json -> output/db.libsql
-✅ Valid database structure, found all 7 tables
+Starting validation...
+Loaded input data: input/miner-fileDto.json
+Connected to database: output/db.libsql
+✅ Valid database structure, found all 4 tables
   - users: 1 records
-  - auth_sources: 1 records
-  - telegram_accounts: 1 records
-  - telegram_chats: 3 records
-  - telegram_messages: 4 records
-  - telegram_media: 1 records
-  - telegram_forwards: 1 records
-✅ Telegram account data is valid
-✅ Telegram chats data is valid (3 chats)
-✅ Telegram messages data is valid (4 messages)
-✅ Relationships between tables are valid
+  - submissions: 1 records
+  - submission_chats: 2 records
+  - chat_messages: 100 records
+✅ Users data is valid
+✅ Submissions data is valid
+✅ Submission chats data is valid (2 chats)
+✅ Chat messages data is valid (100 messages total)
 
-✅ All checks passed! Telegram data has been properly refined.
+🎉 All validation checks passed! Data has been correctly refined.
 ```
 
-If any validation errors are found, the script will provide specific error messages to help identify and fix the issues. 
+## Manually checking the new schema:
 
-
-## Manually checking:
-
-### Validate marked email
+### Validate user source
 ```bash
-sqlite3 output/db.libsql "SELECT email FROM users"
+sqlite3 output/db.libsql "SELECT UserID, Source, SourceUserId FROM users"
 ```
 
-### Validate marked phone number
+### Validate submissions
 ```bash
-sqlite3 output/db.libsql "SELECT phone_masked FROM telegram_accounts"
+sqlite3 output/db.libsql "SELECT SubmissionID, UserID, SubmissionReference FROM submissions"
+```
+
+### Check chat metadata
+```bash
+sqlite3 output/db.libsql "SELECT SourceChatID, FirstMessageDate, LastMessageDate, MessageCount FROM submission_chats"
 ```
 
 ### Query messages
 ```bash
-sqlite3 output/db.libsql "SELECT text FROM telegram_messages LIMIT 5"
+sqlite3 output/db.libsql "SELECT SourceMessageID, SenderID, ContentType, substr(Content, 1, 30) FROM chat_messages LIMIT 5"
+```
+
+```bash
+sqlite3 output/db.libsql "SELECT SourceMessageID, SenderID, ContentType, Content, ContentData FROM chat_messages where ContentType='media' LIMIT 10"
 ```
