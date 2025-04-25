@@ -2,7 +2,7 @@ from typing import Dict, Any, List
 from refiner.models.refined import Base
 from refiner.transformer.base_transformer import DataTransformer
 from refiner.models.refined import Users, Submissions, SubmissionChats, ChatMessages
-from refiner.models.unrefined import MinerFileDto
+from refiner.models.unrefined import WebappFileDto
 from datetime import datetime
 import uuid
 import logging
@@ -25,7 +25,7 @@ class WebappTransformer(DataTransformer):
         """
         # Validate data with Pydantic
         try:
-            miner_data = MinerFileDto.model_validate(data)
+            webapp_data = WebappFileDto.model_validate(data)
         except Exception as e:
             logging.error(f"Error validating webapp data: {e}")
             raise
@@ -36,8 +36,8 @@ class WebappTransformer(DataTransformer):
         user_id = str(uuid.uuid4())
         user = Users(
             UserID=user_id,
-            Source=miner_data.source,
-            SourceUserId=str(miner_data.user),
+            Source=webapp_data.source,
+            SourceUserId=str(webapp_data.user),
             Status="active",
             DateTimeCreated=datetime.now()
         )
@@ -49,12 +49,12 @@ class WebappTransformer(DataTransformer):
             SubmissionID=submission_id,
             UserID=user_id,
             SubmissionDate=datetime.now(),
-            SubmissionReference=miner_data.submission_token or f"webapp-{datetime.now().timestamp()}"
+            SubmissionReference=webapp_data.submission_token or f"webapp-{datetime.now().timestamp()}"
         )
         models.append(submission)
         
         # Process each chat
-        for chat_data in miner_data.chats:
+        for chat_data in webapp_data.chats:
             # Calculate chat statistics
             message_count = len(chat_data.contents)
             

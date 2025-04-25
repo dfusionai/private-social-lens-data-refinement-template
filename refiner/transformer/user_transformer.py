@@ -61,14 +61,18 @@ class UserTransformer(DataTransformer):
             message_count = len(chat_data.contents)
             
             # Determine first and last message dates
-            message_dates = [datetime.fromtimestamp(msg.date) for msg in chat_data.contents if hasattr(msg, 'date')]
+            message_dates = []
+            for msg in chat_data.contents:
+                if hasattr(msg, 'date') and msg.date:
+                    message_dates.append(datetime.fromtimestamp(msg.date))
+            
             first_message_date = min(message_dates) if message_dates else datetime.now()
             last_message_date = max(message_dates) if message_dates else datetime.now()
             
             # Count unique participants
             participants = set()
             for msg in chat_data.contents:
-                if hasattr(msg, 'fromId') and msg.fromId:
+                if hasattr(msg, 'fromId') and msg.fromId and hasattr(msg.fromId, 'userId'):
                     participants.add(msg.fromId.userId)
             
             # Create SubmissionChat record
@@ -86,29 +90,58 @@ class UserTransformer(DataTransformer):
             
             # Process each message in the chat
             for msg_content in chat_data.contents:
-                # Determine content type and actual content
+                # Initialize variables
                 content_type = "text"
                 content = None
+                content_data = None
                 
-                if msg_content.className == "Message" and hasattr(msg_content, 'message') and msg_content.message:
-                    content_type = "text"
-                    content = msg_content.message
+                # Get sender ID from fromId object
+                sender_id = "unknown"
+                if hasattr(msg_content, 'fromId') and msg_content.fromId and hasattr(msg_content.fromId, 'userId'):
+                    sender_id = str(msg_content.fromId.userId)
+                
+                # Get chat ID
+                chat_source_id = str(chat_data.chat_id)
+                
+                # Get outgoing status
+                is_outgoing = False
+                if hasattr(msg_content, 'out') and msg_content.out:
+                    is_outgoing = True
+                
+                # Handle different message types
+                if msg_content.className == "Message":
+                    # Handle text messages
+                    if hasattr(msg_content, 'message') and msg_content.message:
+                        content_type = "text"
+                        content = msg_content.message
+                    
+                    # Handle media messages
+                    if hasattr(msg_content, 'media') and msg_content.media:
+                        if hasattr(msg_content.media, 'className') and msg_content.media.className == "MessageMediaDocument":
+                            content_type = "document"
+                            # Try to get document filename if available
+                            try:
+                                if hasattr(msg_content.media, 'document') and msg_content.media.document:
+                                    doc = msg_content.media.document
+                                    if hasattr(doc, 'attributes') and doc.attributes:
+                                        for attr in doc.attributes:
+                                            if attr.get('className') == "DocumentAttributeFilename":
+                                                content = f"Document: {attr.get('fileName', 'unnamed')}"
+                                                break
+                            except Exception as e:
+                                logging.warning(f"Error processing document attributes: {e}")
+                                content = "Document attachment"
+                        else:
+                            content_type = "media"
+                            content = f"Media: {getattr(msg_content.media, 'className', 'unknown type')}"
+                
                 elif msg_content.className == "MessageService":
                     content_type = "service"
-                    if hasattr(msg_content, 'action'):
-                        content = f"Service message: {msg_content.action.className}"
-                elif hasattr(msg_content, 'media') and msg_content.media:
-                    # Handle media content types
-                    content_type = "media"
-                    content = "Media content"  # Placeholder, actual media processing would go here
-                
-                # Get sender ID
-                sender_id = None
-                if hasattr(msg_content, 'fromId') and msg_content.fromId:
-                    sender_id = msg_content.fromId.userId
-                else:
-                    sender_id = "unknown"
-                
+                    if hasattr(msg_content, 'action') and msg_content.action:
+                        content = f"Service message: {getattr(msg_content.action, 'className', 'unknown action')}"
+                    else:
+                        content = "Service message"
+
                 # Create ChatMessage record
                 message = ChatMessages(
                     MessageID=str(uuid.uuid4()),
@@ -118,7 +151,7 @@ class UserTransformer(DataTransformer):
                     MessageDate=datetime.fromtimestamp(msg_content.date),
                     ContentType=content_type,
                     Content=content,
-                    ContentData=None  # Media data would be processed here if needed
+                    ContentData=content_data
                 )
                 models.append(message)
         

@@ -26,13 +26,20 @@ class Refiner:
                 with open(input_file, 'r') as f:
                     input_data = json.load(f)
                     
-                    # Determine which transformer to use based on file content
+                    # Determine which transformer to use based on source field
                     transformer = None
-                    if input_filename == 'webapp-fileDto.json' or ('revision' in input_data and 'chats' in input_data):
-                        logging.info(f"Using WebappTransformer for {input_filename}")
-                        transformer = WebappTransformer(self.db_path)
+                    if 'source' in input_data:
+                        if input_data['source'] == 'telegram':
+                            logging.info(f"Using WebappTransformer for {input_filename}")
+                            transformer = WebappTransformer(self.db_path)
+                        elif input_data['source'] == 'telegramMiner':
+                            logging.info(f"Using UserTransformer for {input_filename}")
+                            transformer = UserTransformer(self.db_path)
+                        else:
+                            logging.warning(f"Unknown source '{input_data['source']}' in {input_filename}, defaulting to UserTransformer")
+                            transformer = UserTransformer(self.db_path)
                     else:
-                        logging.info(f"Using UserTransformer for {input_filename}")
+                        logging.warning(f"No source field found in {input_filename}, defaulting to UserTransformer")
                         transformer = UserTransformer(self.db_path)
                     
                     # Process the data

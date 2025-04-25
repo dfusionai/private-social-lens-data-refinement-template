@@ -68,17 +68,19 @@ class User(BaseModel):
     metadata: Optional[Metadata] = None
     telegramData: Optional[TelegramData] = None
 
-class FromId(BaseModel):
+########################################
+# Miner-fileDto.json specific models
+########################################
+
+class MinerFromId(BaseModel):
     userId: str
     className: str
 
-
-class PeerId(BaseModel):
+class MinerPeerId(BaseModel):
     chatId: str
     className: str
 
-
-class ReplyTo(BaseModel):
+class MinerReplyTo(BaseModel):
     flags: int
     replyToScheduled: bool = False
     forumTopic: bool = False
@@ -93,17 +95,15 @@ class ReplyTo(BaseModel):
     quoteOffset: Optional[int] = None
     className: str
 
-
-class Action(BaseModel):
+class MinerAction(BaseModel):
     inviterId: Optional[str] = None
     className: str
 
-
-class FwdFrom(BaseModel):
+class MinerFwdFrom(BaseModel):
     flags: int
     imported: bool = False
     savedOut: bool = False
-    fromId: Optional[FromId] = None
+    fromId: Optional[MinerFromId] = None
     fromName: Optional[str] = None
     date: int
     channelPost: Optional[int] = None
@@ -116,8 +116,48 @@ class FwdFrom(BaseModel):
     psaType: Optional[str] = None
     className: str
 
+class MinerMedia(BaseModel):
+    flags: Optional[int] = None
+    className: Optional[str] = None
+    document: Optional[Dict[str, Any]] = None
+    attributes: Optional[List[Dict[str, Any]]] = None
+    
+class MinerMessageData(BaseModel):
+    flags: int
+    out: bool
+    mentioned: Optional[bool] = False
+    mediaUnread: Optional[bool] = False
+    reactionsArePossible: Optional[bool] = True
+    silent: Optional[bool] = False
+    post: Optional[bool] = False
+    legacy: Optional[bool] = False
+    id: int
+    fromId: Optional[MinerFromId] = None
+    peerId: Optional[MinerPeerId] = None
+    fwdFrom: Optional[MinerFwdFrom] = None
+    replyTo: Optional[MinerReplyTo] = None
+    date: int
+    message: Optional[str] = None
+    media: Optional[MinerMedia] = None
+    action: Optional[MinerAction] = None
+    className: str
 
-# Updated models for webapp-fileDto.json
+class MinerChatData(BaseModel):
+    chat_id: int
+    contents: List[MinerMessageData]
+
+class MinerFileDto(BaseModel):
+    """Root model for miner-fileDto.json"""
+    revision: str
+    source: str
+    user: Union[int, str]
+    submission_token: str
+    chats: List[MinerChatData]
+
+
+########################################
+# Webapp-fileDto.json specific models
+########################################
 
 class File(BaseModel):
     """Model for file data"""
@@ -188,7 +228,7 @@ class InteractionInfo(BaseModel):
     view_count: int
     forward_count: int
 
-class MessageData(BaseModel):
+class WebappMessageData(BaseModel):
     """Model for message data"""
     type: str = Field(..., alias="@type")
     id: int
@@ -207,15 +247,15 @@ class MessageData(BaseModel):
     interaction_info: Optional[InteractionInfo] = None
     content: MessageContent
 
-class ChatData(BaseModel):
+class WebappChatData(BaseModel):
     """Model for chat data"""
     chat_id: int
-    contents: List[MessageData]
+    contents: List[WebappMessageData]
 
-class MinerFileDto(BaseModel):
+class WebappFileDto(BaseModel):
     """Root model for webapp-fileDto.json"""
     revision: str
     source: str
     user: Union[int, str]
     submission_token: str
-    chats: List[ChatData]
+    chats: List[WebappChatData]
