@@ -92,5 +92,5 @@ sqlite3 output/db.libsql "SELECT SourceMessageID, SenderID, ContentType, substr(
 ```
 
 ```bash
-sqlite3 output/db.libsql "SELECT SourceMessageID, SenderID, ContentType, substr(Content, 1, 30), ContentData FROM chat_messages where ContentType='photo' LIMIT 10"
+sqlite3 output/db.libsql "SELECT SourceMessageID, SenderID, ContentType, substr(Content, 1, 30), substr(ContentData, 1, 100) FROM chat_messages"
 ```
