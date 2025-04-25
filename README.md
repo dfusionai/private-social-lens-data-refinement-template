@@ -275,9 +275,9 @@ class ChatMessages(Base):
 | `SourceMessageID` | `msg_content.id` | Converted to string: `str(msg_content.id)` |
 | `SenderID` | `msg_content.fromId.userId` | Direct mapping if exists, otherwise `"unknown"` |
 | `MessageDate` | `msg_content.date` | Converted to datetime: `datetime.fromtimestamp(msg_content.date)` |
-| `ContentType` | Based on detection | "text", "service", "document", or "media" based on message content |
+| `ContentType` | Based on detection | "text", "service", "document", "photo", "audio", "video", or "media" based on message content |
 | `Content` | Various (see below) | Depends on ContentType |
-| `ContentData` | N/A | `None` in the current implementation |
+| `ContentData` | Various (see below) | For messages with media content: stores the binary media data<br>For text/service messages: stores the message metadata as UTF-8 encoded JSON |
 
 **ContentType and Content Determination for UserTransformer:**
 
@@ -290,17 +290,39 @@ if msg_content.className == "Message" and hasattr(msg_content, 'message') and ms
 # Case 2: Document media
 if hasattr(msg_content.media, 'className') and msg_content.media.className == "MessageMediaDocument":
     content_type = "document"
-    # Try to extract filename
+    # Try to extract filename and other document attributes
+    
+# Case 3: Photo media
+elif msg_content.media.className == "MessageMediaPhoto":
+    content_type = "photo"
+    # Extract caption text and photo data
 
-# Case 3: Other media type
+# Case 4: Other media type
 else:
     content_type = "media"
     content = f"Media: {getattr(msg_content.media, 'className', 'unknown type')}"
 
-# Case 4: Service message
+# Case 5: Service message
 elif msg_content.className == "MessageService":
     content_type = "service"
     content = f"Service message: {getattr(msg_content.action, 'className', 'unknown action')}"
+```
+
+**ContentData Storage Logic for UserTransformer:**
+
+```python
+# Create metadata dictionary for all message types
+metadata = {
+    "original_message": msg_content.dict() if hasattr(msg_content, 'dict') else _object_to_dict(msg_content),
+    "is_outgoing": is_outgoing
+}
+
+# If binary media data is available, store it directly in ContentData
+if media_binary:
+    content_data = media_binary if isinstance(media_binary, bytes) else str(media_binary).encode('utf-8')
+else:
+    # Otherwise store metadata as encoded JSON
+    content_data = json.dumps(metadata).encode('utf-8')
 ```
 
 ##### WebappTransformer (webapp-fileDto.json)
@@ -314,7 +336,7 @@ elif msg_content.className == "MessageService":
 | `MessageDate` | `msg_content.date` | Converted to datetime: `datetime.fromtimestamp(msg_content.date)` |
 | `ContentType` | `msg_content.content.type` | "text", "photo", "video", "document", or "unknown" based on content type |
 | `Content` | Various (see below) | Depends on ContentType |
-| `ContentData` | From media objects | Extracts thumbnail data when available as binary content |
+| `ContentData` | Various (see below) | For messages with media content: stores thumbnail data as binary content<br>For text messages: may be null or contain additional metadata |
 
 **ContentType and Content Determination for WebappTransformer:**
 
@@ -338,6 +360,21 @@ elif msg_content.content.type == "messageVideo":
 elif msg_content.content.type == "messageDocument":
     content_type = "document"
     # Extract caption text and thumbnail data
+```
+
+**ContentData Storage Logic for WebappTransformer:**
+
+```python
+# For photos, videos, and documents, extract thumbnail when available
+if content_type in ["photo", "video", "document"]:
+    # Try to get minithumbnail data
+    if hasattr(media_object, 'minithumbnail') and media_object.minithumbnail:
+        try:
+            # Convert base64 data to binary
+            thumb_data = media_object.minithumbnail.data
+            content_data = base64.b64decode(thumb_data)
+        except Exception as e:
+            logging.error(f"Error extracting thumbnail data: {e}")
 ```
 
 ## Project Structure
