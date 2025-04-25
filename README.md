@@ -55,7 +55,9 @@ This section explains how data from the input JSON structure is mapped to the da
 
 ### Input JSON Structure
 
-The input data follows this general format:
+The system supports two different input formats:
+
+#### miner-fileDto.json (telegramMiner source)
 
 ```json
 {
@@ -99,7 +101,52 @@ The input data follows this general format:
 }
 ```
 
+#### webapp-fileDto.json (telegram source)
+
+```json
+{
+  "revision": "01.01",
+  "source": "telegram",
+  "user": "5619346142",
+  "submission_token": "...",
+  "chats": [
+    {
+      "chat_id": -919006036,
+      "contents": [
+        {
+          "@type": "message",
+          "id": 1602,
+          "sender_id": {
+            "@type": "messageSenderUser",
+            "user_id": 5020274799
+          },
+          "chat_id": 919006036,
+          "date": 1716712252,
+          "is_outgoing": false,
+          "is_pinned": false,
+          "content": {
+            "@type": "messageText",
+            "text": {
+              "@type": "formattedText",
+              "text": "...",
+              "entities": []
+            }
+          }
+          // Other message properties...
+        }
+        // More messages...
+      ]
+    }
+    // More chats...
+  ]
+}
+```
+
 ### Database Models → JSON Field Mapping
+
+The application uses two different transformers depending on the input source:
+- `UserTransformer` for "telegramMiner" source (miner-fileDto.json)
+- `WebappTransformer` for "telegram" source (webapp-fileDto.json)
 
 #### Users Table
 
@@ -114,11 +161,23 @@ class Users(Base):
     DateTimeCreated = Column(DateTime, nullable=False)
 ```
 
+##### UserTransformer (miner-fileDto.json)
+
 | Model Field | JSON Source | Logic/Condition |
 |-------------|-------------|----------------|
 | `UserID` | N/A | Generated using `str(uuid.uuid4())` |
 | `Source` | N/A | Hard-coded value: `"Telegram"` |
 | `SourceUserId` | `input_data.user` | Direct mapping from root `user` field |
+| `Status` | N/A | Hard-coded value: `"active"` |
+| `DateTimeCreated` | N/A | Current timestamp: `datetime.now()` |
+
+##### WebappTransformer (webapp-fileDto.json)
+
+| Model Field | JSON Source | Logic/Condition |
+|-------------|-------------|----------------|
+| `UserID` | N/A | Generated using `str(uuid.uuid4())` |
+| `Source` | `webapp_data.source` | Direct mapping from root `source` field |
+| `SourceUserId` | `webapp_data.user` | Converted to string: `str(webapp_data.user)` |
 | `Status` | N/A | Hard-coded value: `"active"` |
 | `DateTimeCreated` | N/A | Current timestamp: `datetime.now()` |
 
@@ -134,12 +193,23 @@ class Submissions(Base):
     SubmissionReference = Column(String, nullable=False)
 ```
 
+##### UserTransformer (miner-fileDto.json)
+
 | Model Field | JSON Source | Logic/Condition |
 |-------------|-------------|----------------|
 | `SubmissionID` | N/A | Generated using `str(uuid.uuid4())` |
 | `UserID` | N/A | Foreign key reference to generated Users.UserID |
 | `SubmissionDate` | N/A | Current timestamp: `datetime.now()` |
-| `SubmissionReference` | `input_data.submission_token` | Direct mapping from root `submission_token` field |
+| `SubmissionReference` | `miner_data.submission_token` | Direct mapping from root `submission_token` field |
+
+##### WebappTransformer (webapp-fileDto.json)
+
+| Model Field | JSON Source | Logic/Condition |
+|-------------|-------------|----------------|
+| `SubmissionID` | N/A | Generated using `str(uuid.uuid4())` |
+| `UserID` | N/A | Foreign key reference to generated Users.UserID |
+| `SubmissionDate` | N/A | Current timestamp: `datetime.now()` |
+| `SubmissionReference` | `webapp_data.submission_token` | Direct mapping from root `submission_token` field, or generates a timestamp-based reference if empty |
 
 #### SubmissionChats Table
 
@@ -156,6 +226,8 @@ class SubmissionChats(Base):
     MessageCount = Column(Integer, nullable=False, default=0)
 ```
 
+##### UserTransformer (miner-fileDto.json)
+
 | Model Field | JSON Source | Logic/Condition |
 |-------------|-------------|----------------|
 | `SubmissionChatID` | N/A | Generated using `str(uuid.uuid4())` |
@@ -163,7 +235,19 @@ class SubmissionChats(Base):
 | `SourceChatID` | `chat_data.chat_id` | Converted to string: `str(chat_data.chat_id)` |
 | `FirstMessageDate` | `chat_data.contents[*].date` | Converted to datetime: `min(datetime.fromtimestamp(msg.date) for msg in chat_data.contents)` |
 | `LastMessageDate` | `chat_data.contents[*].date` | Converted to datetime: `max(datetime.fromtimestamp(msg.date) for msg in chat_data.contents)` |
-| `ParticipantCount` | `chat_data.contents[*].fromId.userId` | Count of unique user IDs: `len(participants)` where `participants` is a set of all sender IDs |
+| `ParticipantCount` | `chat_data.contents[*].fromId.userId` | Count of unique user IDs: `len(participants)` where `participants` is a set of all sender user IDs |
+| `MessageCount` | `chat_data.contents` | Length of contents array: `len(chat_data.contents)` |
+
+##### WebappTransformer (webapp-fileDto.json)
+
+| Model Field | JSON Source | Logic/Condition |
+|-------------|-------------|----------------|
+| `SubmissionChatID` | N/A | Generated using `str(uuid.uuid4())` |
+| `SubmissionID` | N/A | Foreign key reference to generated Submissions.SubmissionID |
+| `SourceChatID` | `chat_data.chat_id` | Converted to string: `str(chat_data.chat_id)` |
+| `FirstMessageDate` | `chat_data.contents[*].date` | Converted to datetime: `min(datetime.fromtimestamp(msg.date) for msg in chat_data.contents)` |
+| `LastMessageDate` | `chat_data.contents[*].date` | Converted to datetime: `max(datetime.fromtimestamp(msg.date) for msg in chat_data.contents)` |
+| `ParticipantCount` | `chat_data.contents[*].sender_id` | Count of unique sender IDs (both users and chats): `len(participants)` |
 | `MessageCount` | `chat_data.contents` | Length of contents array: `len(chat_data.contents)` |
 
 #### ChatMessages Table
@@ -182,6 +266,8 @@ class ChatMessages(Base):
     ContentData = Column(LargeBinary, nullable=True)
 ```
 
+##### UserTransformer (miner-fileDto.json)
+
 | Model Field | JSON Source | Logic/Condition |
 |-------------|-------------|----------------|
 | `MessageID` | N/A | Generated using `str(uuid.uuid4())` |
@@ -189,34 +275,69 @@ class ChatMessages(Base):
 | `SourceMessageID` | `msg_content.id` | Converted to string: `str(msg_content.id)` |
 | `SenderID` | `msg_content.fromId.userId` | Direct mapping if exists, otherwise `"unknown"` |
 | `MessageDate` | `msg_content.date` | Converted to datetime: `datetime.fromtimestamp(msg_content.date)` |
-| `ContentType` | N/A | Derived based on message properties (see below) |
+| `ContentType` | Based on detection | "text", "service", "document", or "media" based on message content |
 | `Content` | Various (see below) | Depends on ContentType |
-| `ContentData` | N/A | Currently set to `None` (placeholder for future media processing) |
+| `ContentData` | N/A | `None` in the current implementation |
 
-##### ContentType and Content Determination
-
-The `ContentType` and `Content` fields are populated based on message properties:
+**ContentType and Content Determination for UserTransformer:**
 
 ```python
-# Default values
-content_type = "text"
-content = None
-
 # Case 1: Regular text message
 if msg_content.className == "Message" and hasattr(msg_content, 'message') and msg_content.message:
     content_type = "text"
     content = msg_content.message
 
-# Case 2: Service message
+# Case 2: Document media
+if hasattr(msg_content.media, 'className') and msg_content.media.className == "MessageMediaDocument":
+    content_type = "document"
+    # Try to extract filename
+
+# Case 3: Other media type
+else:
+    content_type = "media"
+    content = f"Media: {getattr(msg_content.media, 'className', 'unknown type')}"
+
+# Case 4: Service message
 elif msg_content.className == "MessageService":
     content_type = "service"
-    if hasattr(msg_content, 'action'):
-        content = f"Service message: {msg_content.action.className}"
+    content = f"Service message: {getattr(msg_content.action, 'className', 'unknown action')}"
+```
 
-# Case 3: Media message
-elif hasattr(msg_content, 'media') and msg_content.media:
-    content_type = "media"
-    content = "Media content"  # Placeholder for actual media processing
+##### WebappTransformer (webapp-fileDto.json)
+
+| Model Field | JSON Source | Logic/Condition |
+|-------------|-------------|----------------|
+| `MessageID` | N/A | Generated using `str(uuid.uuid4())` |
+| `SubmissionChatID` | N/A | Foreign key reference to generated SubmissionChats.SubmissionChatID |
+| `SourceMessageID` | `msg_content.id` | Converted to string: `str(msg_content.id)` |
+| `SenderID` | `msg_content.sender_id.user_id` or `msg_content.sender_id.chat_id` | Extracts ID based on sender type |
+| `MessageDate` | `msg_content.date` | Converted to datetime: `datetime.fromtimestamp(msg_content.date)` |
+| `ContentType` | `msg_content.content.type` | "text", "photo", "video", "document", or "unknown" based on content type |
+| `Content` | Various (see below) | Depends on ContentType |
+| `ContentData` | From media objects | Extracts thumbnail data when available as binary content |
+
+**ContentType and Content Determination for WebappTransformer:**
+
+```python
+# Case 1: Text message
+if msg_content.content.type == "messageText":
+    content_type = "text"
+    # Extract text from either string or FormattedText
+
+# Case 2: Photo message
+elif msg_content.content.type == "messagePhoto":
+    content_type = "photo"
+    # Extract caption text and thumbnail data
+
+# Case 3: Video message
+elif msg_content.content.type == "messageVideo":
+    content_type = "video"
+    # Extract caption text and thumbnail data
+
+# Case 4: Document message
+elif msg_content.content.type == "messageDocument":
+    content_type = "document"
+    # Extract caption text and thumbnail data
 ```
 
 ## Project Structure
