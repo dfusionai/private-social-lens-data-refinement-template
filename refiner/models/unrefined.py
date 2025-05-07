@@ -77,7 +77,21 @@ class MinerFromId(BaseModel):
     className: str
 
 class MinerPeerId(BaseModel):
-    chatId: str
+    chatId: Optional[str] = None
+    userId: Optional[str] = None
+    channelId: Optional[str] = None
+    className: str
+
+class PeerUser(BaseModel):
+    userId: Optional[str] = None
+    className: str
+
+class PeerChat(BaseModel):
+    chatId: Optional[str] = None
+    className: str
+
+class PeerChannel(BaseModel):
+    channelId: Optional[str] = None
     className: str
 
 class MinerReplyTo(BaseModel):
