@@ -145,7 +145,7 @@ The system supports two different input formats:
 ### Database Models → JSON Field Mapping
 
 The application uses two different transformers depending on the input source:
-- `UserTransformer` for "telegramMiner" source (miner-fileDto.json)
+- `MinerTransformer` for "telegramMiner" source (miner-fileDto.json)
 - `WebappTransformer` for "telegram" source (webapp-fileDto.json)
 
 #### Users Table
@@ -161,7 +161,7 @@ class Users(Base):
     DateTimeCreated = Column(DateTime, nullable=False)
 ```
 
-##### UserTransformer (miner-fileDto.json)
+##### MinerTransformer (miner-fileDto.json)
 
 | Model Field | JSON Source | Logic/Condition |
 |-------------|-------------|----------------|
@@ -193,7 +193,7 @@ class Submissions(Base):
     SubmissionReference = Column(String, nullable=False)
 ```
 
-##### UserTransformer (miner-fileDto.json)
+##### MinerTransformer (miner-fileDto.json)
 
 | Model Field | JSON Source | Logic/Condition |
 |-------------|-------------|----------------|
@@ -226,7 +226,7 @@ class SubmissionChats(Base):
     MessageCount = Column(Integer, nullable=False, default=0)
 ```
 
-##### UserTransformer (miner-fileDto.json)
+##### MinerTransformer (miner-fileDto.json)
 
 | Model Field | JSON Source | Logic/Condition |
 |-------------|-------------|----------------|
@@ -266,7 +266,7 @@ class ChatMessages(Base):
     ContentData = Column(LargeBinary, nullable=True)
 ```
 
-##### UserTransformer (miner-fileDto.json)
+##### MinerTransformer (miner-fileDto.json)
 
 | Model Field | JSON Source | Logic/Condition |
 |-------------|-------------|----------------|
@@ -279,7 +279,7 @@ class ChatMessages(Base):
 | `Content` | Various (see below) | Depends on ContentType |
 | `ContentData` | Various (see below) | For messages with media content: stores the binary media data<br>For text/service messages: stores the message metadata as UTF-8 encoded JSON |
 
-**ContentType and Content Determination for UserTransformer:**
+**ContentType and Content Determination for MinerTransformer:**
 
 ```python
 # Case 1: Regular text message
@@ -308,7 +308,7 @@ elif msg_content.className == "MessageService":
     content = f"Service message: {getattr(msg_content.action, 'className', 'unknown action')}"
 ```
 
-**ContentData Storage Logic for UserTransformer:**
+**ContentData Storage Logic for MinerTransformer:**
 
 ```python
 # Create metadata dictionary for all message types

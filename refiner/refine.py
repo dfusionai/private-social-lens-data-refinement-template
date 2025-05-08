@@ -4,7 +4,7 @@ import os
 
 from refiner.models.offchain_schema import OffChainSchema
 from refiner.models.output import Output
-from refiner.transformer.user_transformer import UserTransformer
+from refiner.transformer.miner_transformer import MinerTransformer
 from refiner.transformer.webapp_transformer import WebappTransformer
 from refiner.config import settings
 from refiner.utils.encrypt import encrypt_file
@@ -33,14 +33,14 @@ class Refiner:
                             logging.info(f"Using WebappTransformer for {input_filename}")
                             transformer = WebappTransformer(self.db_path)
                         elif input_data['source'] == 'telegramMiner':
-                            logging.info(f"Using UserTransformer for {input_filename}")
-                            transformer = UserTransformer(self.db_path)
+                            logging.info(f"Using MinerTransformer for {input_filename}")
+                            transformer = MinerTransformer(self.db_path)
                         else:
-                            logging.warning(f"Unknown source '{input_data['source']}' in {input_filename}, defaulting to UserTransformer")
-                            transformer = UserTransformer(self.db_path)
+                            logging.warning(f"Unknown source '{input_data['source']}' in {input_filename}, defaulting to MinerTransformer")
+                            transformer = MinerTransformer(self.db_path)
                     else:
-                        logging.warning(f"No source field found in {input_filename}, defaulting to UserTransformer")
-                        transformer = UserTransformer(self.db_path)
+                        logging.warning(f"No source field found in {input_filename}, defaulting to MinerTransformer")
+                        transformer = MinerTransformer(self.db_path)
                     
                     # Process the data
                     transformer.process(input_data)

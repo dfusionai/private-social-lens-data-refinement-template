@@ -12,7 +12,7 @@ import json
 import base64
 from datetime import datetime
 
-class UserTransformer(DataTransformer):
+class MinerTransformer(DataTransformer):
     """
     Transformer for Telegram chat data from miner-fileDto.json format.
     """
@@ -247,26 +247,20 @@ class UserTransformer(DataTransformer):
         return models
         
     def _object_to_dict(self, obj):
-        """
-        Convert an object to dictionary recursively.
-        
-        Args:
-            obj: Object to convert
-            
-        Returns:
-            Dict representation of the object
-        """
-        if hasattr(obj, '__dict__'):
-            result = {}
-            for key, value in obj.__dict__.items():
-                if key.startswith('_'):
-                    continue
-                if hasattr(value, '__dict__') or isinstance(value, (list, tuple)):
-                    result[key] = self._object_to_dict(value)
-                else:
-                    result[key] = value
-            return result
-        elif isinstance(obj, (list, tuple)):
-            return [self._object_to_dict(item) for item in obj]
-        else:
+        """Convert an object to a dictionary recursively."""
+        if not hasattr(obj, "__dict__"):
             return obj
+        
+        result = {}
+        for key, val in obj.__dict__.items():
+            if key.startswith("_"):
+                continue
+                
+            if isinstance(val, list):
+                result[key] = [self._object_to_dict(x) for x in val]
+            elif hasattr(val, "__dict__"):
+                result[key] = self._object_to_dict(val)
+            else:
+                result[key] = val
+                
+        return result 
