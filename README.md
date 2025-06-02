@@ -412,7 +412,8 @@ pip install --no-cache-dir -r requirements.txt
 python -m refiner
 
 # Or with Docker
-docker build -t refiner .
+docker build -t refiner --platform linux/x86_64 .
+docker save refiner:latest | gzip > refiner-20250602.tar.gz
 docker run \
   --rm \
   --volume $(pwd)/input:/input \

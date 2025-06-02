@@ -30,6 +30,11 @@ class Settings(BaseSettings):
         description="Pinata API secret"
     )
     
+    IPFS_GATEWAY_URL: str = Field(
+        default="https://gateway.pinata.cloud/ipfs",
+        description="IPFS gateway URL for accessing uploaded files"
+    )
+    
     SCHEMA_NAME: str = Field(
         default="Telegram User",
         description="Name of the schema"

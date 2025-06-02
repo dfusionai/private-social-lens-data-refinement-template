@@ -66,7 +66,7 @@ class Refiner:
                     # Encrypt and upload the database to IPFS
                     encrypted_path = encrypt_file(settings.REFINEMENT_ENCRYPTION_KEY, self.db_path)
                     ipfs_hash = upload_file_to_ipfs(encrypted_path)
-                    output.refinement_url = f"https://ipfs.vana.org/ipfs/{ipfs_hash}"
+                    output.refinement_url = f"{settings.IPFS_GATEWAY_URL}/{ipfs_hash}"
                     continue
 
         logging.info("Data transformation completed successfully")
