@@ -10,16 +10,17 @@ PINATA_JSON_API_ENDPOINT = "https://api.pinata.cloud/pinning/pinJSONToIPFS"
 def upload_json_to_ipfs(data):
     """
     Uploads JSON data to IPFS using Pinata API.
+    Reference: https://pinata-cloud.readme.io/reference/post_pinning-pinjsontoipfs
     :param data: JSON data to upload (dictionary or list)
     :return: IPFS hash
     """
-    if not settings.PINATA_API_KEY or not settings.PINATA_API_SECRET:
+    if not settings.PINATA_API_JWT:
         raise Exception("Error: Pinata IPFS API credentials not found, please check your environment variables")
 
     headers = {
-        "Content-Type": "application/json",
-        "pinata_api_key": settings.PINATA_API_KEY,
-        "pinata_secret_api_key": settings.PINATA_API_SECRET
+        "accept": "application/json",
+        "content-type": "application/json",
+        "authorization": f"Bearer {settings.PINATA_API_JWT}"
     }
 
     try:
@@ -40,23 +41,23 @@ def upload_json_to_ipfs(data):
 
 def upload_file_to_ipfs(file_path=None):
     """
-    Uploads a file to IPFS using Pinata API (https://pinata.cloud/)
+    Uploads a file to IPFS using Pinata API (https://pinata.cloud/).
+    Reference: https://pinata-cloud.readme.io/reference/post_pinning-pinfiletoipfs
     :param file_path: Path to the file to upload (defaults to encrypted database)
     :return: IPFS hash
     """
     if file_path is None:
         # Default to the encrypted database file
         file_path = os.path.join(settings.OUTPUT_DIR, "db.libsql.pgp")
-    
+
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"File not found: {file_path}")
-        
-    if not settings.PINATA_API_KEY or not settings.PINATA_API_SECRET:
+
+    if not settings.PINATA_API_JWT:
         raise Exception("Error: Pinata IPFS API credentials not found, please check your environment variables")
 
     headers = {
-        "pinata_api_key": settings.PINATA_API_KEY,
-        "pinata_secret_api_key": settings.PINATA_API_SECRET
+        "authorization": f"Bearer {settings.PINATA_API_JWT}"
     }
 
     try:
@@ -69,7 +70,7 @@ def upload_file_to_ipfs(file_path=None):
                 files=files,
                 headers=headers
             )
-        
+
         response.raise_for_status()
         result = response.json()
         logging.info(f"Successfully uploaded file to IPFS with hash: {result['IpfsHash']}")
@@ -84,7 +85,7 @@ if __name__ == "__main__":
     ipfs_hash = upload_file_to_ipfs()
     print(f"File uploaded to IPFS with hash: {ipfs_hash}")
     print(f"Access at: https://ipfs.vana.org/ipfs/{ipfs_hash}")
-    
+
     ipfs_hash = upload_json_to_ipfs()
     print(f"JSON uploaded to IPFS with hash: {ipfs_hash}")
     print(f"Access at: https://ipfs.vana.org/ipfs/{ipfs_hash}")
