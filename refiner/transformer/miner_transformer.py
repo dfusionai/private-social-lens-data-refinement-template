@@ -191,6 +191,7 @@ class MinerTransformer(DataTransformer):
                             else:
                                 content_type = "media"
                                 content = f"Media: {getattr(msg_content.media, 'className', 'unknown type')}"
+                                logging.warning(f"Unhandled media type: {msg_content.media.className}")
 
                 elif msg_content.className == "MessageService":
                     content_type = "service"
@@ -228,8 +229,8 @@ class MinerTransformer(DataTransformer):
                     # If we have binary media, store it directly
                     content_data = media_binary if isinstance(media_binary, bytes) else str(media_binary).encode('utf-8')
                 else:
-                    # Otherwise store the JSON metadata as bytes
-                    content_data = metadata_json.encode('utf-8') if metadata_json else None
+                    content_data = None
+                    logging.warning(f"Unhandled media")
 
                 # Create ChatMessage record
                 message = ChatMessages(
