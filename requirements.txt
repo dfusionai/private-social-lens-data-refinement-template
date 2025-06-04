@@ -3,3 +3,4 @@ pydantic
 pydantic_settings
 requests
 sqlalchemy
+watchdog>=3.0.0

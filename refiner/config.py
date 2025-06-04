@@ -20,8 +20,23 @@ class Settings(BaseSettings):
         description="Key to symmetrically encrypt the refinement. This is derived from the original file encryption key"
     )
     
+    PINATA_API_KEY: Optional[str] = Field(
+        default=None,
+        description="Pinata API key"
+    )
+    
+    PINATA_API_SECRET: Optional[str] = Field(
+        default=None,
+        description="Pinata API secret"
+    )
+    
+    IPFS_GATEWAY_URL: str = Field(
+        default="https://gateway.pinata.cloud/ipfs",
+        description="IPFS gateway URL for accessing uploaded files"
+    )
+    
     SCHEMA_NAME: str = Field(
-        default="Google Drive Analytics",
+        default="Telegram User",
         description="Name of the schema"
     )
     
@@ -31,7 +46,7 @@ class Settings(BaseSettings):
     )
     
     SCHEMA_DESCRIPTION: str = Field(
-        default="Schema for the Google Drive DLP, representing some basic analytics of the Google user",
+        default="Schema for the Telegram User DLP, representing some basic analytics of the Telegram user",
         description="Description of the schema"
     )
     

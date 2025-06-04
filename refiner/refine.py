@@ -4,7 +4,8 @@ import os
 
 from refiner.models.offchain_schema import OffChainSchema
 from refiner.models.output import Output
-from refiner.transformer.user_transformer import UserTransformer
+from refiner.transformer.miner_transformer import MinerTransformer
+from refiner.transformer.webapp_transformer import WebappTransformer
 from refiner.config import settings
 from refiner.utils.encrypt import encrypt_file
 from refiner.utils.ipfs import upload_file_to_ipfs, upload_json_to_ipfs
@@ -24,9 +25,24 @@ class Refiner:
             if os.path.splitext(input_file)[1].lower() == '.json':
                 with open(input_file, 'r') as f:
                     input_data = json.load(f)
-
-                    # Transform account data
-                    transformer = UserTransformer(self.db_path)
+                    
+                    # Determine which transformer to use based on source field
+                    transformer = None
+                    if 'source' in input_data:
+                        if input_data['source'] == 'telegram':
+                            logging.info(f"Using WebappTransformer for {input_filename}")
+                            transformer = WebappTransformer(self.db_path)
+                        elif input_data['source'] == 'telegramMiner':
+                            logging.info(f"Using MinerTransformer for {input_filename}")
+                            transformer = MinerTransformer(self.db_path)
+                        else:
+                            logging.warning(f"Unknown source '{input_data['source']}' in {input_filename}, defaulting to MinerTransformer")
+                            transformer = MinerTransformer(self.db_path)
+                    else:
+                        logging.warning(f"No source field found in {input_filename}, defaulting to MinerTransformer")
+                        transformer = MinerTransformer(self.db_path)
+                    
+                    # Process the data
                     transformer.process(input_data)
                     logging.info(f"Transformed {input_filename}")
                     
@@ -50,7 +66,7 @@ class Refiner:
                     # Encrypt and upload the database to IPFS
                     encrypted_path = encrypt_file(settings.REFINEMENT_ENCRYPTION_KEY, self.db_path)
                     ipfs_hash = upload_file_to_ipfs(encrypted_path)
-                    output.refinement_url = f"https://ipfs.vana.org/ipfs/{ipfs_hash}"
+                    output.refinement_url = f"{settings.IPFS_GATEWAY_URL}/{ipfs_hash}"
                     continue
 
         logging.info("Data transformation completed successfully")
