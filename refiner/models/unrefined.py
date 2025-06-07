@@ -117,7 +117,7 @@ class MinerFwdFrom(BaseModel):
     flags: int
     imported: bool = False
     savedOut: bool = False
-    fromId: Optional[MinerFromId] = None
+    fromId: Optional[Any] = None
     fromName: Optional[str] = None
     date: int
     channelPost: Optional[int] = None
@@ -146,7 +146,7 @@ class MinerMessageData(BaseModel):
     post: Optional[bool] = False
     legacy: Optional[bool] = False
     id: int
-    fromId: Optional[MinerFromId] = None
+    fromId: Optional[Union[MinerFromId, PeerChannel, PeerChat]] = None
     peerId: Optional[MinerPeerId] = None
     fwdFrom: Optional[MinerFwdFrom] = None
     replyTo: Optional[MinerReplyTo] = None
