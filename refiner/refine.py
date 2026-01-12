@@ -8,7 +8,7 @@ from refiner.transformer.miner_transformer import MinerTransformer
 from refiner.transformer.webapp_transformer import WebappTransformer
 from refiner.config import settings
 from refiner.utils.encrypt import encrypt_file
-from refiner.utils.ipfs import upload_file_to_ipfs, upload_json_to_ipfs
+from refiner.utils.storage import upload_file_to_storage, upload_json_to_storage
 
 class Refiner:
     def __init__(self):
@@ -56,17 +56,18 @@ class Refiner:
                     )
                     output.schema = schema
                         
-                    # Upload the schema to IPFS
+                    # Upload the schema to storage
                     schema_file = os.path.join(settings.OUTPUT_DIR, 'schema.json')
                     with open(schema_file, 'w') as f:
                         json.dump(schema.model_dump(), f, indent=4)
-                        schema_ipfs_hash = upload_json_to_ipfs(schema.model_dump())
-                        logging.info(f"Schema uploaded to IPFS with hash: {schema_ipfs_hash}")
+                    schema_result = upload_json_to_storage(schema.model_dump())
+                    logging.info(f"Schema uploaded to storage - hash: {schema_result['hash'][:16]}...")
                     
-                    # Encrypt and upload the database to IPFS
+                    # Encrypt and upload the database to storage
                     encrypted_path = encrypt_file(settings.REFINEMENT_ENCRYPTION_KEY, self.db_path)
-                    ipfs_hash = upload_file_to_ipfs(encrypted_path)
-                    output.refinement_url = f"{settings.IPFS_GATEWAY_URL}/{ipfs_hash}"
+                    upload_result = upload_file_to_storage(encrypted_path)
+                    output.refinement_url = upload_result['url']
+                    logging.info(f"Encrypted database uploaded - URL: {output.refinement_url}")
                     continue
 
         logging.info("Data transformation completed successfully")
