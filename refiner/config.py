@@ -40,25 +40,10 @@ class Settings(BaseSettings):
         description="Dialect of the schema"
     )
 
-    # Optional, required if using https://pinata.cloud (IPFS pinning service)
-    # PINATA_API_KEY: Optional[str] = Field(
-    #     default=None,
-    #     description="Pinata API key"
-    # )
-
-    # PINATA_API_SECRET: Optional[str] = Field(
-    #     default=None,
-    #     description="Pinata API secret"
-    # )
-
-    PINATA_API_JWT: Optional[str] = Field(
+    # Relay upload URL for offchain storage (provided by the relay service)
+    RELAY_UPLOAD_URL: str = Field(
         default="",
-        description="Pinata API JWT"
-    )
-
-    IPFS_GATEWAY_URL: str = Field(
-        default="https://dfusion-social-lens.mypinata.cloud/ipfs",
-        description="IPFS gateway URL for accessing uploaded files"
+        description="URL to upload refined data through the relay service"
     )
 
     class Config:
